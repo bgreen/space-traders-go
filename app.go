@@ -10,15 +10,32 @@ import (
 
 func main() {
 
+	// Read Bearer token from token.txt
+	token, err := os.ReadFile("token.txt")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "No token file found")
+		return
+	}
+
+	// Add bearer token to the context
+	auth := context.WithValue(context.Background(), stapi.ContextAccessToken, string(token))
+
+	// Create API Client
 	configuration := stapi.NewConfiguration()
 	apiClient := stapi.NewAPIClient(configuration)
-	token := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiTUNNT09QMiIsInZlcnNpb24iOiJ2MiIsInJlc2V0X2RhdGUiOiIyMDIzLTA2LTI0IiwiaWF0IjoxNjg4MDU1NTU4LCJzdWIiOiJhZ2VudC10b2tlbiJ9.gaALYBZxBcP6FXFBxHLmAVwLeEnNc7CPELnsWK7COaGRlm8HZpzVfZB9AzBFUBjYPeqyYyXPukS62vO-ykeAkAo4ceL1DIihq72LQAbNtQvMMtS6F0m_UwX4HCQZqmSiCMkOc7cNRohoQHdt_jLdX8N4_V5P1-5wYCweF-Kqu0IoKbdoFpjHEpDUhcSmF-tUIGCleQ4wqu3pl3NX9HIjvJ2CSgUkcGXimEqpjcFPYpBC_bc73N0Coa7J9DhWEoCpkA1qnDNIvCOVYEpZIV2OYiKoGE_7bAciBE2BznEyPYw4ogZ1F8bK52oT4ka2kN9N0aHKnQnwzMmQkjMgir19Jw"
-	auth := context.WithValue(context.Background(), stapi.ContextAccessToken, token)
+
+	// Get Agent from API
 	resp, r, err := apiClient.AgentsApi.GetMyAgent(auth).Execute()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `AgentsApi.GetMyAgent``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `GetMyAgent`: GetMyAgent200Response
-	fmt.Fprintf(os.Stdout, "Response from `AgentsApi.GetMyAgent`: %v\n", resp)
+
+	// Print full response
+	fmt.Fprintf(os.Stdout, "Full Response: %v\n", resp)
+
+	// Print specific fields
+	fmt.Fprintf(os.Stdout, "Name: %v\nCredits: %v",
+		resp.GetData().Symbol,
+		resp.GetData().Credits)
 }
