@@ -1,2 +1,8 @@
 token.txt
 openapi-generator-cli.jar
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	stapi "github.com/bgreen/space-traders-go-sdk"
+	"github.com/bgreen/space-traders-go/stapi"
 )
 
 func main() {
