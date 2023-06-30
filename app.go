@@ -29,6 +29,7 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error when calling `AgentsApi.GetMyAgent``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+		return
 	}
 
 	// Print full response
