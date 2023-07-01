@@ -36,7 +36,7 @@ func main() {
 	fmt.Fprintf(os.Stdout, "Full Response: %v\n", resp)
 
 	// Print specific fields
-	fmt.Fprintf(os.Stdout, "Name: %v\nCredits: %v",
+	fmt.Fprintf(os.Stdout, "Name: %v\nCredits: %v\n",
 		resp.GetData().Symbol,
 		resp.GetData().Credits)
 }

@@ -12,6 +12,6 @@ java -jar openapi-generator-cli.jar generate `
     --git-repo-id "space-traders-go" `
     --git-user-id "bgreen" `
     --minimal-update `
-    --additional-properties=enumClassPrefix=true `
-    --additional-properties=packageName=stapi `
-    --additional-properties=isGoSubmodule=true
+    -p enumClassPrefix=true `
+    -p packageName=stapi `
+    -p isGoSubmodule=true
