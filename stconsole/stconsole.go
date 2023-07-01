@@ -7,6 +7,7 @@ import (
 
 	stapi "github.com/bgreen/space-traders-go/stapi"
 	tea "github.com/charmbracelet/bubbletea"
+	lipgloss "github.com/charmbracelet/lipgloss"
 )
 
 var client *stapi.APIClient
@@ -42,11 +43,15 @@ func main() {
 /////////////////////////
 
 type model struct {
-	agent stapi.Agent
+	agent     stapi.Agent
+	ships     []stapi.Ship
+	contracts []stapi.Contract
+
+	err error
 }
 
 func (m model) Init() tea.Cmd {
-	return getAgent
+	return tea.Batch(getAgent, getShips, getContracts)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -54,7 +59,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case agentMsg:
 		m.agent = stapi.Agent(msg)
 
+	case shipsMsg:
+		m.ships = []stapi.Ship(msg)
+
+	case contractsMsg:
+		m.contracts = []stapi.Contract(msg)
+
 	case errMsg:
+		m.err = msg.err
 		return m, tea.Quit
 
 	case tea.KeyMsg:
@@ -69,9 +81,45 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+var (
+	paneStyle = lipgloss.NewStyle().
+			Width(30).
+			Height(12).
+			Align(lipgloss.Top, lipgloss.Left).
+			BorderStyle(lipgloss.NormalBorder())
+
+	errStyle = lipgloss.NewStyle().
+			Height(2).
+			Align(lipgloss.Bottom, lipgloss.Left)
+)
+
 func (m model) View() string {
 
-	s := fmt.Sprintf("Name: %v\nHQ: %v\nCredits: %v\n", m.agent.Symbol, m.agent.Headquarters, m.agent.Credits)
+	agentPane := fmt.Sprintf("Agent:\nName: %v\nHQ: %v\nCredits: %v\n", m.agent.Symbol, m.agent.Headquarters, m.agent.Credits)
+
+	shipPane := "Ships:\n"
+	for i, v := range m.ships {
+		shipPane += fmt.Sprintf("%v: %v\n", i, v.Symbol)
+	}
+
+	contractPane := "Contracts:\n"
+	for i, v := range m.contracts {
+		contractPane += fmt.Sprintf("%v: %v %v\n", i, v.Id, v.Type)
+	}
+
+	var errPane = ""
+	if m.err != nil {
+		errPane = fmt.Sprintf("%s", m.err)
+	}
+
+	s := lipgloss.JoinHorizontal(lipgloss.Top,
+		paneStyle.Render(agentPane),
+		paneStyle.Render(shipPane),
+		paneStyle.Render(contractPane))
+
+	s = lipgloss.JoinVertical(lipgloss.Left,
+		s,
+		errStyle.Render(errPane))
 
 	return s
 }
@@ -81,6 +129,10 @@ func (m model) View() string {
 ///////////////////////////
 
 type agentMsg stapi.Agent
+
+type shipsMsg []stapi.Ship
+
+type contractsMsg []stapi.Contract
 
 type errMsg struct{ err error }
 
@@ -96,4 +148,22 @@ func getAgent() tea.Msg {
 	}
 
 	return agentMsg(resp.GetData())
+}
+
+func getShips() tea.Msg {
+	resp, _, err := client.FleetApi.GetMyShips(ctx).Execute()
+	if err != nil {
+		return errMsg{err}
+	}
+
+	return shipsMsg(resp.GetData())
+}
+
+func getContracts() tea.Msg {
+	resp, _, err := client.ContractsApi.GetContracts(ctx).Execute()
+	if err != nil {
+		return errMsg{err}
+	}
+
+	return contractsMsg(resp.GetData())
 }
