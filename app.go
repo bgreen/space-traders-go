@@ -1,42 +1,52 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"os"
 
-	"github.com/bgreen/space-traders-go/stapi"
+	"github.com/bgreen/space-traders-go/sthandler"
 )
 
 func main() {
 
-	// Read Bearer token from token.txt
-	token, err := os.ReadFile("token.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "No token file found")
-		return
-	}
+	s := sthandler.NewServer("MCMOOP")
 
-	// Add bearer token to the context
-	auth := context.WithValue(context.Background(), stapi.ContextAccessToken, string(token))
-
-	// Create API Client
-	configuration := stapi.NewConfiguration()
-	apiClient := stapi.NewAPIClient(configuration)
-
-	// Get Agent from API
-	resp, r, err := apiClient.AgentsApi.GetMyAgent(auth).Execute()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `AgentsApi.GetMyAgent``: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
-		return
-	}
-
-	// Print full response
-	fmt.Fprintf(os.Stdout, "Full Response: %v\n", resp)
+	s.Start()
+	defer s.Stop()
 
 	// Print specific fields
-	fmt.Fprintf(os.Stdout, "Name: %v\nCredits: %v\n",
-		resp.GetData().Symbol,
-		resp.GetData().Credits)
+	agent, err := s.GetMyAgent()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Agent:")
+	fmt.Printf("Name: %v\nCredits: %v\n",
+		agent.Symbol,
+		agent.Credits)
+
+	ships, err := s.GetMyShips()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Ships:")
+	for i, v := range ships {
+		fmt.Printf("%v:\t%v\t%v\n", i, v.Symbol, v.Frame.Name)
+	}
+
+	contracts, err := s.GetContracts()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Contracts:")
+	for i, v := range contracts {
+		fmt.Printf("%v:\t%v\t%v\n", i, v.Id, v.Type)
+	}
+
+	systems, err := s.GetSystems()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Systems:")
+	for i, v := range systems {
+		fmt.Printf("%v:\t%v\t%v\n", i, v.Symbol, v.Type)
+	}
 }
