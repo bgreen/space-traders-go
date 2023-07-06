@@ -1,35 +1,25 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	stapi "github.com/bgreen/space-traders-go/stapi"
+	st "github.com/bgreen/space-traders-go/sthandler"
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
 
-var client *stapi.APIClient
-var ctx context.Context
+var client *st.Server
 
 func main() {
-	// Read Bearer token from token.txt
-	token, err := os.ReadFile("token.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "No token file found")
-		return
-	}
 
 	m := model{}
 
-	// Add bearer token to the context
-	ctx = context.WithValue(context.Background(), stapi.ContextAccessToken, string(token))
-
 	// Create API Client
-	configuration := stapi.NewConfiguration()
-	client = stapi.NewAPIClient(configuration)
-
+	client = st.NewServer("PICKYPICKY")
+	client.Start()
+	defer client.Stop()
 	// Create the bubbletea app
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
@@ -46,12 +36,13 @@ type model struct {
 	agent     stapi.Agent
 	ships     []stapi.Ship
 	contracts []stapi.Contract
+	systems   []stapi.System
 
 	err error
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(getAgent, getShips, getContracts)
+	return tea.Batch(getAgent, getShips, getContracts, getSystems)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -64,6 +55,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case contractsMsg:
 		m.contracts = []stapi.Contract(msg)
+
+	case systemsMsg:
+		m.systems = []stapi.System(msg)
 
 	case errMsg:
 		m.err = msg.err
@@ -81,45 +75,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-var (
-	paneStyle = lipgloss.NewStyle().
-			Width(30).
-			Height(12).
-			Align(lipgloss.Top, lipgloss.Left).
-			BorderStyle(lipgloss.NormalBorder())
-
-	errStyle = lipgloss.NewStyle().
-			Height(2).
-			Align(lipgloss.Bottom, lipgloss.Left)
-)
-
 func (m model) View() string {
 
-	agentPane := fmt.Sprintf("Agent:\nName: %v\nHQ: %v\nCredits: %v\n", m.agent.Symbol, m.agent.Headquarters, m.agent.Credits)
-
-	shipPane := "Ships:\n"
-	for i, v := range m.ships {
-		shipPane += fmt.Sprintf("%v: %v\n", i, v.Symbol)
-	}
-
-	contractPane := "Contracts:\n"
-	for i, v := range m.contracts {
-		contractPane += fmt.Sprintf("%v: %v %v\n", i, v.Id, v.Type)
-	}
-
-	var errPane = ""
-	if m.err != nil {
-		errPane = fmt.Sprintf("%s", m.err)
-	}
-
 	s := lipgloss.JoinHorizontal(lipgloss.Top,
-		paneStyle.Render(agentPane),
-		paneStyle.Render(shipPane),
-		paneStyle.Render(contractPane))
+		m.shipsView(),
+		m.contractsView(),
+		m.systemsView())
 
 	s = lipgloss.JoinVertical(lipgloss.Left,
+		m.statusBarView(),
 		s,
-		errStyle.Render(errPane))
+		m.messageView())
 
 	return s
 }
@@ -134,6 +100,8 @@ type shipsMsg []stapi.Ship
 
 type contractsMsg []stapi.Contract
 
+type systemsMsg []stapi.System
+
 type errMsg struct{ err error }
 
 ///////////////////////////
@@ -141,29 +109,33 @@ type errMsg struct{ err error }
 ///////////////////////////
 
 func getAgent() tea.Msg {
-	// Get Agent from API
-	resp, _, err := client.AgentsApi.GetMyAgent(ctx).Execute()
+	a, err := client.GetMyAgent()
 	if err != nil {
 		return errMsg{err}
 	}
-
-	return agentMsg(resp.GetData())
+	return agentMsg(a)
 }
 
 func getShips() tea.Msg {
-	resp, _, err := client.FleetApi.GetMyShips(ctx).Execute()
+	a, err := client.GetMyShips()
 	if err != nil {
 		return errMsg{err}
 	}
-
-	return shipsMsg(resp.GetData())
+	return shipsMsg(a)
 }
 
 func getContracts() tea.Msg {
-	resp, _, err := client.ContractsApi.GetContracts(ctx).Execute()
+	a, err := client.GetContracts()
 	if err != nil {
 		return errMsg{err}
 	}
+	return contractsMsg(a)
+}
 
-	return contractsMsg(resp.GetData())
+func getSystems() tea.Msg {
+	a, err := client.GetSystems()
+	if err != nil {
+		return errMsg{err}
+	}
+	return systemsMsg(a)
 }
