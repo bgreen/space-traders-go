@@ -14,7 +14,7 @@ var client *st.Server
 
 func main() {
 
-	m := model{systems: make(map[string]stapi.System)}
+	m := model{win: window{x: 120, y: 50}}
 
 	// Create API Client
 	client = st.NewServer("PICKYPICKY")
@@ -36,10 +36,15 @@ type model struct {
 	agent     stapi.Agent
 	ships     []stapi.Ship
 	contracts []stapi.Contract
-	systems   map[string]stapi.System
-	modeSel   int
+	systems   []stapi.System
 
-	win window
+	modeSel     int
+	shipSel     int
+	systemSel   int
+	contractSel int
+
+	win   window
+	style style
 
 	msg string
 }
@@ -50,7 +55,7 @@ type window struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(getAgent, getShips, getContracts)
+	return tea.Batch(getAgent, getShips, getContracts, getSystems)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -62,23 +67,49 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ships = []stapi.Ship(msg)
 		var r []tea.Cmd
 		for _, v := range m.ships {
-			if _, ok := m.systems[v.Nav.SystemSymbol]; !ok {
+			found := false
+			for _, w := range m.systems {
+				if w.Symbol == v.Nav.SystemSymbol {
+					found = true
+					break
+				}
+			}
+			if !found {
 				r = append(r, getSystem(v.Nav.SystemSymbol))
 			}
 		}
+
 		return m, tea.Batch(r...)
 
 	case contractsMsg:
 		m.contracts = []stapi.Contract(msg)
 
 	case systemsMsg:
+		m.systems = []stapi.System(msg)
 		for _, v := range []stapi.System(msg) {
-			m.systems[v.Symbol] = v
+			found := false
+			for _, w := range m.systems {
+				if w.Symbol == v.Symbol {
+					found = true
+					break
+				}
+			}
+			if !found {
+				m.systems = append(m.systems, v)
+			}
 		}
 
 	case systemMsg:
-		s := stapi.System(msg)
-		m.systems[s.Symbol] = stapi.System(s)
+		found := false
+		for _, v := range m.systems {
+			if v.Symbol == msg.Symbol {
+				found = true
+				break
+			}
+		}
+		if !found {
+			m.systems = append(m.systems, stapi.System(msg))
+		}
 
 	case errMsg:
 		m.msg = fmt.Sprint(msg.err)
@@ -86,6 +117,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.win.x = msg.Width
 		m.win.y = msg.Height
+		m.style = m.resetStyle()
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -101,19 +133,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		e := tea.MouseEvent(msg)
-		e.Y = (m.win.y - 1) - e.Y
 		switch e.Type {
 		case tea.MouseLeft:
 			m.msg = fmt.Sprintf("X:%v Y%v", e.X, e.Y)
 			switch {
-			case e.X >= 0 && e.X < buttonWidth:
-				switch {
-				case (e.Y >= 1+buttonHeight*0) && (e.Y < 1+buttonHeight*1):
-					m.modeSel = 2
-				case (e.Y >= 1+buttonHeight*1) && (e.Y < 1+buttonHeight*2):
-					m.modeSel = 1
-				case (e.Y >= 1+buttonHeight*2) && (e.Y < 1+buttonHeight*3):
-					m.modeSel = 0
+			case (e.X >= 0) && (e.X < m.style.buttonWidth):
+				sel := (e.Y - 1) / m.style.buttonHeight
+				if sel <= 2 {
+					m.modeSel = sel
+				}
+			case (e.X >= m.style.buttonWidth) && (e.X < m.style.buttonWidth+m.style.paneWidth):
+				sel := (e.Y - 2)
+				if (m.modeSel == 0) && (sel < len(m.ships)) {
+					m.shipSel = sel
+				}
+				if (m.modeSel == 1) && (sel < len(m.systems)) {
+					m.systemSel = sel
+				}
+				if (m.modeSel == 2) && (sel < len(m.contracts)) {
+					m.contractSel = sel
 				}
 			}
 		}
@@ -130,8 +168,10 @@ func (m model) View() string {
 
 	if m.modeSel == 0 {
 		panes = append(panes, m.shipsView())
+		panes = append(panes, m.shipInfoView())
 	} else if m.modeSel == 1 {
 		panes = append(panes, m.systemsView())
+		panes = append(panes, m.systemInfoView())
 	} else if m.modeSel == 2 {
 		panes = append(panes, m.contractsView())
 	}
