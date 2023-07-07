@@ -8,11 +8,11 @@ import (
 
 func (m model) statusBarView() string {
 	s := fmt.Sprintf("Name: %v    HQ: %v    Credits: %v", m.agent.Symbol, m.agent.Headquarters, m.agent.Credits)
-	return barStyle.AlignHorizontal(lipgloss.Center).Render(s)
+	return statusBarStyle.Render(s)
 }
 
 func (m model) shipsView() string {
-	s := "Ships:\n"
+	var s string
 	for _, v := range m.ships {
 		s += fmt.Sprintf("%v: %v\n", v.Symbol, v.Frame.Name)
 	}
@@ -20,7 +20,7 @@ func (m model) shipsView() string {
 }
 
 func (m model) contractsView() string {
-	s := "Contracts:\n"
+	var s string
 	for _, v := range m.contracts {
 		s += fmt.Sprintf("%v: %v\n", v.Id, v.Type)
 	}
@@ -28,7 +28,7 @@ func (m model) contractsView() string {
 }
 
 func (m model) systemsView() string {
-	s := "Systems:\n"
+	var s string
 	for _, v := range m.systems {
 		s += fmt.Sprintf("%v: %v\n", v.Symbol, v.Type)
 	}
@@ -36,9 +36,17 @@ func (m model) systemsView() string {
 }
 
 func (m model) messageView() string {
-	s := ""
-	if m.err != nil {
-		s = fmt.Sprintf("%s", m.err)
+	return msgBarStyle.Render(m.msg)
+}
+
+func (m model) buttonsView() string {
+	buttons := []string{}
+	for i, v := range []string{"Ships", "Systems", "Contracts"} {
+		if m.modeSel == i {
+			buttons = append(buttons, buttonSelectedStyle.Render(v))
+		} else {
+			buttons = append(buttons, buttonUnselectedStyle.Render(v))
+		}
 	}
-	return barStyle.Render(s)
+	return lipgloss.JoinVertical(lipgloss.Left, buttons...)
 }

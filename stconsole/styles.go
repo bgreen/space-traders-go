@@ -3,33 +3,51 @@ package main
 import lipgloss "github.com/charmbracelet/lipgloss"
 
 var (
+	totalWidth   = 99
+	buttonWidth  = 11
+	buttonHeight = 5
+	paneCount    = 3
+
 	paneStyle = lipgloss.NewStyle().
-			Width(30).
-			Height(12).
+			Width(((totalWidth - buttonWidth) / paneCount) - 2).
+			Height(13).
 			AlignHorizontal(lipgloss.Left).
 			AlignVertical(lipgloss.Top).
 			BorderStyle(lipgloss.NormalBorder())
 
-	barStyle = lipgloss.NewStyle().
+	statusBarStyle = lipgloss.NewStyle().
 			Height(1).
-			Width(90).
+			Width(totalWidth).
 			AlignHorizontal(lipgloss.Left).
 			AlignVertical(lipgloss.Bottom).
 			Background(lipgloss.Color("7")).
-			Foreground(lipgloss.Color("0"))
+			Foreground(lipgloss.Color("0")).
+			AlignHorizontal(lipgloss.Center)
 
-	buttonStyle = lipgloss.NewStyle().
-			Height(4).
-			Width(8).
-			AlignHorizontal(lipgloss.Center).
-			AlignVertical(lipgloss.Center).
-			Padding(1)
+	msgBarStyle = lipgloss.NewStyle().
+			Height(1).
+			Width(totalWidth).
+			AlignHorizontal(lipgloss.Left).
+			AlignVertical(lipgloss.Bottom).
+			Background(lipgloss.Color("7")).
+			Foreground(lipgloss.Color("0")).
+			AlignHorizontal(lipgloss.Left)
 
-	buttonUnselectedStyle = buttonStyle.
-				Background(lipgloss.Color("7")).
+	buttonSelectedStyle = lipgloss.NewStyle().
+				Height(buttonHeight - 2).
+				Width(buttonWidth - 2).
+				AlignHorizontal(lipgloss.Center).
+				AlignVertical(lipgloss.Center).
+				BorderStyle(lipgloss.NormalBorder()).
+				Background(lipgloss.Color("6")).
 				Foreground(lipgloss.Color("0"))
 
-	buttonSelectedStyle = buttonStyle.
-				Background(lipgloss.Color("6")).
+	buttonUnselectedStyle = lipgloss.NewStyle().
+				Height(buttonHeight - 2).
+				Width(buttonWidth - 2).
+				AlignHorizontal(lipgloss.Center).
+				AlignVertical(lipgloss.Center).
+				BorderStyle(lipgloss.NormalBorder()).
+				Background(lipgloss.Color("7")).
 				Foreground(lipgloss.Color("0"))
 )
