@@ -7,6 +7,7 @@ import (
 	"github.com/bgreen/space-traders-go/stapi"
 
 	"context"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -17,23 +18,34 @@ type Server struct {
 	done      chan bool
 	limiter   sync.Mutex
 	auth      string
-	name      string
-	faction   stapi.FactionSymbols
+	callbacks map[reflect.Type][]callbackInfo
+	cbMutex   sync.RWMutex
 }
 
-func NewServer(name string) *Server {
+/////////////////////////////
+// Server Init
+/////////////////////////////
+
+func NewServer() *Server {
 	configuration := stapi.NewConfiguration()
 	s := Server{
 		apiClient: stapi.NewAPIClient(configuration),
 		recvChan:  make(chan Message, 10),
 		done:      make(chan bool),
-		name:      name,
-		faction:   stapi.FactionSymbols("COSMIC"),
+		callbacks: make(map[reflect.Type][]callbackInfo),
 	}
 
 	s.retrieveAuth()
 
 	return &s
+}
+
+func (s *Server) Start() {
+	go s.service()
+}
+
+func (s *Server) Stop() {
+	s.done <- true
 }
 
 func (s *Server) retrieveAuth() {
@@ -50,13 +62,71 @@ func (s *Server) retrieveAuth() {
 	// TODO: Write token.txt file
 }
 
-func (s *Server) Start() {
-	go s.service()
+func (s *Server) getAuth() context.Context {
+	return context.WithValue(context.Background(), stapi.ContextAccessToken, s.auth)
 }
 
-func (s *Server) Stop() {
-	s.done <- true
+/////////////////////////////
+//	Callbacks
+/////////////////////////////
+
+type Callback func(r any)
+
+type callbackInfo struct {
+	f    Callback
+	once bool
 }
+
+func (s *Server) RegisterCallback(r any, f Callback) {
+	s.cbMutex.Lock()
+	t := reflect.TypeOf(r)
+	s.callbacks[t] = append(s.callbacks[t], callbackInfo{f, false})
+	s.cbMutex.Unlock()
+}
+
+func (s *Server) RegisterCallbackOnce(r any, f Callback) {
+	s.cbMutex.Lock()
+	t := reflect.TypeOf(r)
+	s.callbacks[t] = append(s.callbacks[t], callbackInfo{f, true})
+	s.cbMutex.Unlock()
+}
+
+func (s *Server) UnregisterCallback(r any, f Callback) {
+	/* TODO: can't unregister because functions aren't comparable, therefore can't find it in the list
+	s.cbMutex.Lock()
+	t := reflect.TypeOf(r)
+	// Is there anything registered to this response type?
+	if cbs, ok := s.callbacks[t]; ok {
+		//s.callbacks[t] = append(s.callbacks[t], f)
+		for i, cb := range cbs {
+			// Is this the same callback?
+			if cb == f {
+
+			}
+		}
+	}
+	s.cbMutex.Unlock()
+	*/
+}
+
+func NewCallbackOnceChannel[T any](s *Server) chan T {
+	replyC := make(chan T, 1)
+	f := func(r any) {
+		select {
+		case replyC <- r.(T):
+		default:
+			fmt.Println("Queue full")
+		}
+		defer close(replyC)
+	}
+	var t T
+	s.RegisterCallbackOnce(t, f)
+	return replyC
+}
+
+/////////////////////////////
+// Timers
+/////////////////////////////
 
 func (s *Server) timerGive() {
 	s.limiter.TryLock()
@@ -72,6 +142,8 @@ func (s *Server) service() {
 	defer ticker.Stop()
 	for {
 		select {
+		case m := <-s.recvChan:
+			go s.handleMsg(m)
 		case <-ticker.C:
 			s.timerGive()
 		case <-s.done:
@@ -80,17 +152,42 @@ func (s *Server) service() {
 	}
 }
 
-func (s *Server) getAuth() context.Context {
-	return context.WithValue(context.Background(), stapi.ContextAccessToken, s.auth)
-}
-
 // TODO: Optionally page over longer results
 var limit int32 = 10
 
-func (s *Server) GetMyAgent() (stapi.Agent, error) {
+func (s *Server) handleMsg(m Message) {
+	var resp any
+	var data any
+
 	s.timerTake()
-	resp, _, err := s.apiClient.AgentsApi.GetMyAgent(s.getAuth()).Execute()
-	return resp.GetData(), err
+
+	switch req := m.Data.(type) {
+	case stapi.ApiGetMyAgentRequest:
+		resp, _, _ = req.Execute()
+		data = resp.(*stapi.GetMyAgent200Response).GetData()
+	case stapi.ApiRegisterRequest:
+		resp, _, _ = req.Execute()
+		data = resp.(*stapi.Register201Response).GetData()
+	}
+
+	s.cbMutex.Lock()
+	t := reflect.TypeOf(data)
+	for i, v := range s.callbacks[t] {
+		go v.f(data)
+		if v.once {
+			// Cut the callback out of the list
+			s.callbacks[t] = append(s.callbacks[t][:i], s.callbacks[t][i+1:]...)
+		}
+	}
+	s.cbMutex.Unlock()
+}
+
+/////////////////////////////
+// Request Methods
+/////////////////////////////
+
+func (s *Server) GetMyAgent() {
+	s.recvChan <- NewMessage(s.apiClient.AgentsApi.GetMyAgent(s.getAuth()))
 }
 
 func (s *Server) AcceptContract(contract string) (stapi.AcceptContract200ResponseData, error) {
@@ -130,11 +227,9 @@ func (s *Server) GetStatus() (stapi.GetStatus200Response, error) {
 	return *resp, err
 }
 
-func (s *Server) Register() (stapi.Register201ResponseData, error) {
-	s.timerTake()
-	request := *stapi.NewRegisterRequest(s.faction, s.name)
-	resp, _, err := s.apiClient.DefaultApi.Register(s.getAuth()).RegisterRequest(request).Execute()
-	return resp.GetData(), err
+func (s *Server) Register(name string, faction string) {
+	request := *stapi.NewRegisterRequest(stapi.FactionSymbols(faction), name)
+	s.recvChan <- NewMessage(s.apiClient.DefaultApi.Register(s.getAuth()).RegisterRequest(request))
 }
 
 func (s *Server) GetFaction(faction stapi.FactionSymbols) (stapi.Faction, error) {

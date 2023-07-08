@@ -17,7 +17,7 @@ func main() {
 	m := model{win: window{x: 120, y: 50}}
 
 	// Create API Client
-	client = st.NewServer("PICKYPICKY")
+	client = st.NewServer()
 	client.Start()
 	defer client.Stop()
 	// Create the bubbletea app
@@ -55,7 +55,7 @@ type window struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(getAgent, getShips, getContracts, getSystems)
+	return tea.Batch(getShips, getContracts, getSystems)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -127,8 +127,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			return m, tea.Quit
-		case " ":
-			return m, getAgent
 		}
 
 	case tea.MouseMsg:
@@ -206,6 +204,7 @@ type errMsg struct{ err error }
 // 	 Cmd definitions
 ///////////////////////////
 
+/*
 func getAgent() tea.Msg {
 	a, err := client.GetMyAgent()
 	if err != nil {
@@ -213,6 +212,7 @@ func getAgent() tea.Msg {
 	}
 	return agentMsg(a)
 }
+*/
 
 func getShips() tea.Msg {
 	a, err := client.GetMyShips()

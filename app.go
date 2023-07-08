@@ -3,21 +3,22 @@ package main
 import (
 	"fmt"
 
+	"github.com/bgreen/space-traders-go/stapi"
 	"github.com/bgreen/space-traders-go/sthandler"
 )
 
 func main() {
 
-	s := sthandler.NewServer("MCMOOP")
+	s := sthandler.NewServer()
 
 	s.Start()
 	defer s.Stop()
 
 	// Print specific fields
-	agent, err := s.GetMyAgent()
-	if err != nil {
-		fmt.Println(err)
-	}
+	c := sthandler.NewCallbackOnceChannel[stapi.Agent](s)
+	s.GetMyAgent()
+	agent := <-c
+
 	fmt.Println("Agent:")
 	fmt.Printf("Name: %v\nCredits: %v\n",
 		agent.Symbol,
