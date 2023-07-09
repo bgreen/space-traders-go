@@ -17,7 +17,7 @@ func main() {
 	m := model{win: window{x: 120, y: 50}}
 
 	// Create API Client
-	client = st.NewServer("PICKYPICKY")
+	client = st.NewServer()
 	client.Start()
 	defer client.Stop()
 	// Create the bubbletea app
@@ -127,8 +127,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			return m, tea.Quit
-		case " ":
-			return m, getAgent
 		}
 
 	case tea.MouseMsg:
@@ -144,14 +142,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case (e.X >= m.style.buttonWidth) && (e.X < m.style.buttonWidth+m.style.paneWidth):
 				sel := (e.Y - 2)
-				if (m.modeSel == 0) && (sel < len(m.ships)) {
-					m.shipSel = sel
-				}
-				if (m.modeSel == 1) && (sel < len(m.systems)) {
-					m.systemSel = sel
-				}
-				if (m.modeSel == 2) && (sel < len(m.contracts)) {
-					m.contractSel = sel
+				if sel >= 0 {
+					if (m.modeSel == 0) && (sel < len(m.ships)) {
+						m.shipSel = sel
+					}
+					if (m.modeSel == 1) && (sel < len(m.systems)) {
+						m.systemSel = sel
+					}
+					if (m.modeSel == 2) && (sel < len(m.contracts)) {
+						m.contractSel = sel
+					}
 				}
 			}
 		}

@@ -8,7 +8,7 @@ import (
 
 func main() {
 
-	s := sthandler.NewServer("MCMOOP")
+	s := sthandler.NewServer()
 
 	s.Start()
 	defer s.Stop()

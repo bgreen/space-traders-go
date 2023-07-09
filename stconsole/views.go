@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
@@ -27,7 +28,8 @@ func (m model) shipsView() string {
 func (m model) contractsView() string {
 	var s string
 	for _, v := range m.contracts {
-		s += fmt.Sprintf("%v: %v\n", v.Id, v.Type)
+		timer := v.DeadlineToAccept.Sub(time.Now())
+		s += fmt.Sprintf("%v: %v\n", v.Type, timer)
 	}
 	return m.style.paneStyle.Render(s)
 }
