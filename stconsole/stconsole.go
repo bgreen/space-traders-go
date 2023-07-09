@@ -55,7 +55,7 @@ type window struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(getShips, getContracts, getSystems)
+	return tea.Batch(getAgent, getShips, getContracts, getSystems)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -142,14 +142,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case (e.X >= m.style.buttonWidth) && (e.X < m.style.buttonWidth+m.style.paneWidth):
 				sel := (e.Y - 2)
-				if (m.modeSel == 0) && (sel < len(m.ships)) {
-					m.shipSel = sel
-				}
-				if (m.modeSel == 1) && (sel < len(m.systems)) {
-					m.systemSel = sel
-				}
-				if (m.modeSel == 2) && (sel < len(m.contracts)) {
-					m.contractSel = sel
+				if sel >= 0 {
+					if (m.modeSel == 0) && (sel < len(m.ships)) {
+						m.shipSel = sel
+					}
+					if (m.modeSel == 1) && (sel < len(m.systems)) {
+						m.systemSel = sel
+					}
+					if (m.modeSel == 2) && (sel < len(m.contracts)) {
+						m.contractSel = sel
+					}
 				}
 			}
 		}
@@ -204,7 +206,6 @@ type errMsg struct{ err error }
 // 	 Cmd definitions
 ///////////////////////////
 
-/*
 func getAgent() tea.Msg {
 	a, err := client.GetMyAgent()
 	if err != nil {
@@ -212,7 +213,6 @@ func getAgent() tea.Msg {
 	}
 	return agentMsg(a)
 }
-*/
 
 func getShips() tea.Msg {
 	a, err := client.GetMyShips()

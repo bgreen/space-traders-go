@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/bgreen/space-traders-go/stapi"
 	"github.com/bgreen/space-traders-go/sthandler"
 )
 
@@ -15,10 +14,10 @@ func main() {
 	defer s.Stop()
 
 	// Print specific fields
-	c := sthandler.NewCallbackOnceChannel[stapi.Agent](s)
-	s.GetMyAgent()
-	agent := <-c
-
+	agent, err := s.GetMyAgent()
+	if err != nil {
+		fmt.Println(err)
+	}
 	fmt.Println("Agent:")
 	fmt.Printf("Name: %v\nCredits: %v\n",
 		agent.Symbol,
