@@ -21,14 +21,12 @@ type Server struct {
 	faction   stapi.FactionSymbols
 }
 
-func NewServer(name string) *Server {
+func NewServer() *Server {
 	configuration := stapi.NewConfiguration()
 	s := Server{
 		apiClient: stapi.NewAPIClient(configuration),
 		recvChan:  make(chan Message, 10),
 		done:      make(chan bool),
-		name:      name,
-		faction:   stapi.FactionSymbols("COSMIC"),
 	}
 
 	s.retrieveAuth()
@@ -130,9 +128,9 @@ func (s *Server) GetStatus() (stapi.GetStatus200Response, error) {
 	return *resp, err
 }
 
-func (s *Server) Register() (stapi.Register201ResponseData, error) {
+func (s *Server) Register(name string, faction string) (stapi.Register201ResponseData, error) {
 	s.timerTake()
-	request := *stapi.NewRegisterRequest(s.faction, s.name)
+	request := *stapi.NewRegisterRequest(stapi.FactionSymbols(faction), name)
 	resp, _, err := s.apiClient.DefaultApi.Register(s.getAuth()).RegisterRequest(request).Execute()
 	return resp.GetData(), err
 }
