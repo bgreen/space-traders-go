@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/bgreen/space-traders-go/sthandler"
+	"github.com/bgreen/space-traders-go/st"
 )
 
 func main() {
 
-	s := sthandler.NewServer()
+	s := st.NewServer()
 
 	s.Start()
 	defer s.Stop()

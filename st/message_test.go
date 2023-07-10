@@ -1,4 +1,4 @@
-package sthandler
+package st
 
 import (
 	"fmt"

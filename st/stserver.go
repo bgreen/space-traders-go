@@ -1,4 +1,4 @@
-package sthandler
+package st
 
 import (
 	"fmt"
@@ -17,8 +17,6 @@ type Server struct {
 	done      chan bool
 	limiter   sync.Mutex
 	auth      string
-	name      string
-	faction   stapi.FactionSymbols
 }
 
 func NewServer() *Server {
@@ -66,7 +64,7 @@ func (s *Server) timerTake() {
 }
 
 func (s *Server) service() {
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Second / 2)
 	defer ticker.Stop()
 	for {
 		select {

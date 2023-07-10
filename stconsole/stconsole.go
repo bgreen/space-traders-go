@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	st "github.com/bgreen/space-traders-go/st"
 	stapi "github.com/bgreen/space-traders-go/stapi"
-	st "github.com/bgreen/space-traders-go/sthandler"
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
@@ -14,7 +14,8 @@ var client *st.Server
 
 func main() {
 
-	m := model{win: window{x: 120, y: 50}}
+	m := model{win: coords{x: 120, y: 50},
+		waypoints: make(map[string]stapi.Waypoint)}
 
 	// Create API Client
 	client = st.NewServer()
@@ -37,21 +38,19 @@ type model struct {
 	ships     []stapi.Ship
 	contracts []stapi.Contract
 	systems   []stapi.System
+	waypoints map[string]stapi.Waypoint
 
 	modeSel     int
 	shipSel     int
 	systemSel   int
 	contractSel int
+	shipInfoSel int
+	wpListSel   int
 
-	win   window
+	win   coords
 	style style
 
 	msg string
-}
-
-type window struct {
-	x int
-	y int
 }
 
 func (m model) Init() tea.Cmd {
@@ -85,7 +84,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.contracts = []stapi.Contract(msg)
 
 	case systemsMsg:
-		m.systems = []stapi.System(msg)
+		var r []tea.Cmd
 		for _, v := range []stapi.System(msg) {
 			found := false
 			for _, w := range m.systems {
@@ -96,10 +95,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if !found {
 				m.systems = append(m.systems, v)
+				r = append(r, getSystemWaypoints(v.Symbol))
 			}
 		}
+		return m, tea.Batch(r...)
 
 	case systemMsg:
+		var r []tea.Cmd
 		found := false
 		for _, v := range m.systems {
 			if v.Symbol == msg.Symbol {
@@ -109,6 +111,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if !found {
 			m.systems = append(m.systems, stapi.System(msg))
+			r = append(r, getSystemWaypoints(stapi.System(msg).Symbol))
+		}
+		return m, tea.Batch(r...)
+
+	case waypointsMsg:
+		for _, v := range []stapi.Waypoint(msg) {
+			m.waypoints[v.Symbol] = v
 		}
 
 	case errMsg:
@@ -135,12 +144,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseLeft:
 			m.msg = fmt.Sprintf("X:%v Y%v", e.X, e.Y)
 			switch {
-			case (e.X >= 0) && (e.X < m.style.buttonWidth):
-				sel := (e.Y - 1) / m.style.buttonHeight
-				if sel <= 2 {
-					m.modeSel = sel
-				}
-			case (e.X >= m.style.buttonWidth) && (e.X < m.style.buttonWidth+m.style.paneWidth):
+			case m.style.buttonLoc[0].contains(e.X, e.Y):
+				m.modeSel = 0
+			case m.style.buttonLoc[1].contains(e.X, e.Y):
+				m.modeSel = 1
+			case m.style.buttonLoc[2].contains(e.X, e.Y):
+				m.modeSel = 2
+			case m.style.paneLoc[0].contains(e.X, e.Y):
 				sel := (e.Y - 2)
 				if sel >= 0 {
 					if (m.modeSel == 0) && (sel < len(m.ships)) {
@@ -151,6 +161,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					if (m.modeSel == 2) && (sel < len(m.contracts)) {
 						m.contractSel = sel
+					}
+				}
+			case m.style.paneLoc[1].contains(e.X, e.Y):
+				if m.modeSel == 0 {
+					for i, v := range m.style.shipButtonLoc {
+						if v.contains(e.X, e.Y) {
+							m.shipInfoSel = i
+						}
+					}
+				} else if m.modeSel == 1 {
+					sel := (e.Y - m.style.wpListLoc.topLeft.y)
+					if (sel >= 0) && (sel < len(m.systems[m.systemSel].Waypoints)) {
+						m.wpListSel = sel
 					}
 				}
 			}
@@ -169,11 +192,14 @@ func (m model) View() string {
 	if m.modeSel == 0 {
 		panes = append(panes, m.shipsView())
 		panes = append(panes, m.shipInfoView())
+		panes = append(panes, m.shipActionsView())
 	} else if m.modeSel == 1 {
 		panes = append(panes, m.systemsView())
 		panes = append(panes, m.systemInfoView())
+		panes = append(panes, m.systemWaypointInfoView())
 	} else if m.modeSel == 2 {
 		panes = append(panes, m.contractsView())
+		panes = append(panes, m.contractsInfoView())
 	}
 
 	s := lipgloss.JoinHorizontal(lipgloss.Top, panes...)
@@ -199,6 +225,8 @@ type contractsMsg []stapi.Contract
 type systemsMsg []stapi.System
 
 type systemMsg stapi.System
+
+type waypointsMsg []stapi.Waypoint
 
 type errMsg struct{ err error }
 
@@ -245,5 +273,15 @@ func getSystem(symbol string) func() tea.Msg {
 			return errMsg{err}
 		}
 		return systemMsg(a)
+	}
+}
+
+func getSystemWaypoints(symbol string) func() tea.Msg {
+	return func() tea.Msg {
+		a, err := client.GetSystemWaypoints(symbol)
+		if err != nil {
+			return errMsg{err}
+		}
+		return waypointsMsg(a)
 	}
 }

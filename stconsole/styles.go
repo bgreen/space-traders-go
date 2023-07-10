@@ -11,6 +11,11 @@ type style struct {
 	paneWidth    int
 	paneCount    int
 
+	buttonLoc     [3]box
+	paneLoc       [3]box
+	shipButtonLoc [3]box
+	wpListLoc     box
+
 	color []lipgloss.Color
 
 	paneStyle             lipgloss.Style
@@ -23,6 +28,23 @@ type style struct {
 	rowTitleStyle         lipgloss.Style
 }
 
+type coords struct {
+	x int
+	y int
+}
+
+type box struct {
+	topLeft     coords
+	bottomRight coords
+}
+
+func (b box) contains(x, y int) bool {
+	if (x >= b.topLeft.x) && (x <= b.bottomRight.x) && (y >= b.topLeft.y) && (y <= b.bottomRight.y) {
+		return true
+	}
+	return false
+}
+
 func (m model) resetStyle() style {
 	var s style = m.style
 	s.totalWidth = m.win.x
@@ -32,6 +54,38 @@ func (m model) resetStyle() style {
 	s.paneCount = 3
 	s.paneHeight = s.totalHeight - 2
 	s.paneWidth = (s.totalWidth - s.buttonWidth) / s.paneCount
+
+	for i, _ := range s.buttonLoc {
+		var b box
+		b.topLeft.x = 0
+		b.topLeft.y = 1 + s.buttonHeight*i
+		b.bottomRight.x = b.topLeft.x + s.buttonWidth - 1
+		b.bottomRight.y = b.topLeft.y + s.buttonHeight - 1
+		s.buttonLoc[i] = b
+	}
+
+	for i, _ := range s.paneLoc {
+		var b box
+		b.topLeft.x = 0 + s.buttonWidth + s.paneWidth*i
+		b.topLeft.y = 1
+		b.bottomRight.x = b.topLeft.x + s.paneWidth - 1
+		b.bottomRight.y = b.topLeft.y + s.paneHeight - 1
+		s.paneLoc[i] = b
+	}
+
+	for i, _ := range s.shipButtonLoc {
+		var b box
+		b.topLeft.x = s.paneLoc[1].topLeft.x + s.buttonWidth*i + 1
+		b.topLeft.y = s.paneLoc[1].topLeft.y + 12
+		b.bottomRight.x = b.topLeft.x + s.buttonWidth - 1
+		b.bottomRight.y = b.topLeft.y + s.buttonHeight - 1
+		s.shipButtonLoc[i] = b
+	}
+
+	s.wpListLoc.topLeft.x = s.paneLoc[1].topLeft.x
+	s.wpListLoc.topLeft.y = s.paneLoc[1].topLeft.y + 6
+	s.wpListLoc.bottomRight.x = s.paneLoc[1].bottomRight.x
+	s.wpListLoc.bottomRight.y = s.paneLoc[1].bottomRight.y - 1
 
 	// https://colorhunt.co/palette/0000004e4feb068fffeeeeee
 	s.color = []lipgloss.Color{lipgloss.Color("#000000"), // Black
