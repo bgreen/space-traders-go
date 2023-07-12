@@ -1,4 +1,4 @@
-package main
+package stconsole
 
 import lipgloss "github.com/charmbracelet/lipgloss"
 
@@ -11,20 +11,22 @@ type style struct {
 	paneWidth    int
 	paneCount    int
 
-	buttonLoc     [3]box
-	paneLoc       [3]box
-	shipButtonLoc [3]box
-	wpListLoc     box
+	buttonLoc       [3]box
+	paneLoc         [3]box
+	shipInfoListLoc box
+	wpListLoc       box
 
 	color []lipgloss.Color
 
 	paneStyle             lipgloss.Style
+	paneActiveStyle       lipgloss.Style
 	statusBarStyle        lipgloss.Style
 	msgBarStyle           lipgloss.Style
 	buttonSelectedStyle   lipgloss.Style
 	buttonUnselectedStyle lipgloss.Style
 	rowSelectedStyle      lipgloss.Style
 	rowUnselectedStyle    lipgloss.Style
+	rowActiveStyle        lipgloss.Style
 	rowTitleStyle         lipgloss.Style
 }
 
@@ -36,6 +38,10 @@ type coords struct {
 type box struct {
 	topLeft     coords
 	bottomRight coords
+	contents    string
+	orientation int
+	more        []box
+	style       lipgloss.Style
 }
 
 func (b box) contains(x, y int) bool {
@@ -47,7 +53,8 @@ func (b box) contains(x, y int) bool {
 
 func (m model) resetStyle() style {
 	var s style = m.style
-	s.totalWidth = m.win.x
+	//s.totalWidth = m.win.x
+	s.totalWidth = 95 // TODO: fix bubbletea mouse width limit
 	s.totalHeight = m.win.y
 	s.buttonWidth = 11
 	s.buttonHeight = 5
@@ -73,14 +80,10 @@ func (m model) resetStyle() style {
 		s.paneLoc[i] = b
 	}
 
-	for i, _ := range s.shipButtonLoc {
-		var b box
-		b.topLeft.x = s.paneLoc[1].topLeft.x + s.buttonWidth*i + 1
-		b.topLeft.y = s.paneLoc[1].topLeft.y + 12
-		b.bottomRight.x = b.topLeft.x + s.buttonWidth - 1
-		b.bottomRight.y = b.topLeft.y + s.buttonHeight - 1
-		s.shipButtonLoc[i] = b
-	}
+	s.shipInfoListLoc.topLeft.x = s.paneLoc[1].topLeft.x
+	s.shipInfoListLoc.topLeft.y = s.paneLoc[1].topLeft.y + 12
+	s.shipInfoListLoc.bottomRight.x = s.paneLoc[1].bottomRight.x
+	s.shipInfoListLoc.bottomRight.y = s.paneLoc[1].bottomRight.y - 1
 
 	s.wpListLoc.topLeft.x = s.paneLoc[1].topLeft.x
 	s.wpListLoc.topLeft.y = s.paneLoc[1].topLeft.y + 6
@@ -103,6 +106,10 @@ func (m model) resetStyle() style {
 		Foreground(s.color[3]).
 		BorderBackground(s.color[0]).
 		BorderForeground(s.color[3])
+
+	s.paneActiveStyle = s.paneStyle.Copy().
+		BorderBackground(s.color[0]).
+		BorderForeground(s.color[2])
 
 	barStyle := lipgloss.NewStyle().
 		Height(1).
@@ -146,6 +153,11 @@ func (m model) resetStyle() style {
 		Width(s.paneWidth - 2).
 		Background(s.color[0]).
 		Foreground(s.color[3])
+
+	s.rowActiveStyle = lipgloss.NewStyle().
+		Width(s.paneWidth - 2).
+		Background(s.color[2]).
+		Foreground(s.color[0])
 
 	s.rowTitleStyle = lipgloss.NewStyle().
 		Width(s.paneWidth - 2).

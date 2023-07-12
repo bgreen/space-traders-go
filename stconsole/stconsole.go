@@ -1,4 +1,4 @@
-package main
+package stconsole
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 
 var client *st.Server
 
-func main() {
+func Run() {
 
 	m := model{win: coords{x: 120, y: 50},
 		waypoints: make(map[string]stapi.Waypoint)}
@@ -22,7 +22,7 @@ func main() {
 	client.Start()
 	defer client.Stop()
 	// Create the bubbletea app
-	p := tea.NewProgram(m, tea.WithMouseAllMotion())
+	p := tea.NewProgram(m, tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
@@ -40,12 +40,16 @@ type model struct {
 	systems   []stapi.System
 	waypoints map[string]stapi.Waypoint
 
-	modeSel     int
-	shipSel     int
-	systemSel   int
-	contractSel int
-	shipInfoSel int
-	wpListSel   int
+	modeSel       int
+	shipSel       int
+	shipInfoSel   int
+	shipActionSel int
+	systemSel     int
+	wpListSel     int
+	contractSel   int
+
+	activeX int
+	activeY int
 
 	win   coords
 	style style
@@ -136,7 +140,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			return m, tea.Quit
+		case "up":
+			m.activeY -= 1
+			if m.activeY < 0 {
+				m.activeY = 0
+			}
+		case "down":
+			m.activeY += 1
+			if m.activeX > 10 {
+				m.activeX = 10
+			}
+		case "left":
+			m.activeX -= 1
+			if m.activeX < 0 {
+				m.activeX = 0
+			}
+		case "right":
+			m.activeX += 1
+			if m.activeY > 3 {
+				m.activeY = 3
+			}
 		}
+		return m, nil
 
 	case tea.MouseMsg:
 		e := tea.MouseEvent(msg)
@@ -165,15 +190,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case m.style.paneLoc[1].contains(e.X, e.Y):
 				if m.modeSel == 0 {
-					for i, v := range m.style.shipButtonLoc {
-						if v.contains(e.X, e.Y) {
-							m.shipInfoSel = i
-						}
+					sel := (e.Y - m.style.shipInfoListLoc.topLeft.y)
+					if (sel >= 0) && (sel < 3) {
+						m.shipInfoSel = sel
 					}
 				} else if m.modeSel == 1 {
 					sel := (e.Y - m.style.wpListLoc.topLeft.y)
 					if (sel >= 0) && (sel < len(m.systems[m.systemSel].Waypoints)) {
 						m.wpListSel = sel
+					}
+				}
+			case m.style.paneLoc[2].contains(e.X, e.Y):
+				if m.modeSel == 0 {
+					sel := (e.Y - 3)
+					if (sel >= 0) && (m.shipSel < len(m.ships)) {
+						actions := st.Ship(m.ships[m.shipSel]).GetShipActions()
+						if sel < len(actions) {
+							m.shipActionSel = sel
+						}
 					}
 				}
 			}
@@ -192,7 +226,15 @@ func (m model) View() string {
 	if m.modeSel == 0 {
 		panes = append(panes, m.shipsView())
 		panes = append(panes, m.shipInfoView())
-		panes = append(panes, m.shipActionsView())
+		switch m.shipInfoSel {
+		case 0:
+			panes = append(panes, m.shipActionsView())
+		case 1:
+			panes = append(panes, m.shipModulesView())
+		case 2:
+			panes = append(panes, m.shipMountsView())
+		default:
+		}
 	} else if m.modeSel == 1 {
 		panes = append(panes, m.systemsView())
 		panes = append(panes, m.systemInfoView())

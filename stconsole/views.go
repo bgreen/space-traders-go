@@ -1,4 +1,4 @@
-package main
+package stconsole
 
 import (
 	"fmt"
@@ -30,6 +30,16 @@ func stringWidth(s string) int {
 	return max
 }
 
+func truncate(s string, l int) string {
+	ss := strings.Split(s, "\n")
+	for i, v := range ss {
+		if len(v)-1 > l {
+			ss[i] = v[:l]
+		}
+	}
+	return strings.Join(ss, "\n")
+}
+
 /////////////////////////////
 // Bars
 /////////////////////////////
@@ -50,7 +60,7 @@ func (m model) messageView() string {
 func (m model) shipsView() string {
 	rows := []string{}
 	for i, v := range m.ships {
-		s := fmt.Sprintf("%v: %v", v.Symbol, v.Frame.Name)
+		s := fmt.Sprintf("%v: %v", v.Symbol, v.Frame.Name[6:])
 		if i == m.shipSel {
 			rows = append(rows, m.style.rowSelectedStyle.Render(s))
 		} else {
@@ -65,7 +75,7 @@ func (m model) shipInfoView() string {
 	if m.shipSel < len(m.ships) {
 		a := m.ships[m.shipSel]
 		s += m.style.rowTitleStyle.Render(a.Symbol) + "\n"
-		s += fmt.Sprintf("Frame:    %v\n", a.Frame.Name)
+		s += fmt.Sprintf("Frame:    %v\n", a.Frame.Name[6:])
 		s += fmt.Sprintf("Engine:   %v\n", a.Engine.Name)
 		s += fmt.Sprintf("Fuel:     %v/%v\n", a.Fuel.Current, a.Fuel.Capacity)
 
@@ -76,31 +86,15 @@ func (m model) shipInfoView() string {
 		s += fmt.Sprintf("Route:    %v\n", a.Nav.Route.Destination.Symbol)
 		s += fmt.Sprintf("Mode:     %v\n", a.Nav.FlightMode)
 
-		s += m.style.rowTitleStyle.Render("More Info")
-		var buttons string
+		s += m.style.rowTitleStyle.Render("More Info") + "\n"
 		for i, v := range []string{"Actions", "Modules", "Mounts"} {
 			if m.shipInfoSel == i {
-				buttons = lipgloss.JoinHorizontal(lipgloss.Left, buttons, m.style.buttonSelectedStyle.Render(v))
+				s += m.style.rowSelectedStyle.Render(v) + "\n"
 			} else {
-				buttons = lipgloss.JoinHorizontal(lipgloss.Left, buttons, m.style.buttonUnselectedStyle.Render(v))
+				s += m.style.rowUnselectedStyle.Render(v) + "\n"
 			}
-
 		}
 
-		s = lipgloss.JoinVertical(lipgloss.Left, s, buttons)
-		/*
-			s += m.style.rowTitleStyle.Render("Modules") + "\n"
-			for _, v := range a.Modules {
-				s += fmt.Sprintf("%v\n", v.Name)
-			}
-
-			s += m.style.rowTitleStyle.Render("Mounts") + "\n"
-			for _, v := range a.Mounts {
-				s += fmt.Sprintf("%v\n", v.Name)
-			}
-
-			s += m.style.rowTitleStyle.Render("Actions") + "\n"
-		*/
 	}
 	return m.style.paneStyle.Render(s)
 }
@@ -111,8 +105,41 @@ func (m model) shipActionsView() string {
 		a := m.ships[m.shipSel]
 		s += m.style.rowTitleStyle.Render("Actions") + "\n"
 		actions := st.Ship(a).GetShipActions()
-		for _, v := range actions {
-			s += fmt.Sprintln(v.Name)
+		for i, v := range actions {
+			if i == m.shipActionSel {
+				s += m.style.rowSelectedStyle.Render(v.Name) + "\n"
+			} else {
+				s += m.style.rowUnselectedStyle.Render(v.Name) + "\n"
+			}
+		}
+		s += m.style.rowTitleStyle.Render("Options") + "\n"
+		for k, v := range actions[m.shipActionSel].Params {
+			param := fmt.Sprintf("%v: %v", k, v)
+			s += m.style.rowUnselectedStyle.Render(param) + "\n"
+		}
+	}
+	return m.style.paneStyle.Render(s)
+}
+
+func (m model) shipModulesView() string {
+	var s string
+	if m.shipSel < len(m.ships) {
+		a := m.ships[m.shipSel]
+		s += m.style.rowTitleStyle.Render("Modules") + "\n"
+		for _, v := range a.Modules {
+			s += fmt.Sprintf("%v\n", v.Name)
+		}
+	}
+	return m.style.paneStyle.Render(s)
+}
+
+func (m model) shipMountsView() string {
+	var s string
+	if m.shipSel < len(m.ships) {
+		a := m.ships[m.shipSel]
+		s += m.style.rowTitleStyle.Render("Mounts") + "\n"
+		for _, v := range a.Mounts {
+			s += fmt.Sprintf("%v\n", v.Name)
 		}
 	}
 	return m.style.paneStyle.Render(s)
@@ -149,9 +176,9 @@ func (m model) contractsInfoView() string {
 		var wp []string
 		wp = append(wp, m.style.rowTitleStyle.Render("Terms"))
 		for _, v := range a.Terms.Deliver {
-			wp = append(wp, fmt.Sprintf("Trade Good:  %v", v.TradeSymbol))
-			wp = append(wp, fmt.Sprintf("Quantity:    %v/%v", v.UnitsFulfilled, v.UnitsRequired))
-			wp = append(wp, fmt.Sprintf("Destination: %v", v.DestinationSymbol))
+			wp = append(wp, fmt.Sprintf("Trade:  %v", v.TradeSymbol))
+			wp = append(wp, fmt.Sprintf("Amount: %v/%v", v.UnitsFulfilled, v.UnitsRequired))
+			wp = append(wp, fmt.Sprintf("Dest:   %v", v.DestinationSymbol))
 		}
 		s += lipgloss.JoinVertical(lipgloss.Left, wp...)
 	}
@@ -195,10 +222,11 @@ func (m model) systemInfoView() string {
 
 		wp = append(wp, m.style.rowTitleStyle.Render("Waypoints"))
 		for i, v := range a.Waypoints {
+			w := truncate(fmt.Sprintf("%v: %v", v.Symbol, v.Type), m.style.paneWidth-2)
 			if i == m.wpListSel {
-				wp = append(wp, m.style.rowSelectedStyle.Render(fmt.Sprintf("%v: %v", v.Symbol, v.Type)))
+				wp = append(wp, m.style.rowSelectedStyle.Render(w))
 			} else {
-				wp = append(wp, m.style.rowUnselectedStyle.Render(fmt.Sprintf("%v: %v", v.Symbol, v.Type)))
+				wp = append(wp, m.style.rowUnselectedStyle.Render(w))
 			}
 		}
 		s += lipgloss.JoinVertical(lipgloss.Left, wp...)
