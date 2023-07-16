@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	st "github.com/bgreen/space-traders-go/st"
 	stapi "github.com/bgreen/space-traders-go/stapi"
+	st "github.com/bgreen/space-traders-go/stservice"
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
