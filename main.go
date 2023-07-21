@@ -1,10 +1,11 @@
+/*
+Copyright © 2023 NAME HERE <EMAIL ADDRESS>
+
+*/
 package main
 
-import (
-	"github.com/bgreen/space-traders-go/stconsole"
-)
+import "github.com/bgreen/space-traders-go/cmd"
 
 func main() {
-
-	stconsole.Run()
+	cmd.Execute()
 }

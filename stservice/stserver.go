@@ -2,6 +2,7 @@ package stservice
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/bgreen/space-traders-go/stapi"
@@ -81,7 +82,7 @@ func (s *Server) getAuth() context.Context {
 }
 
 // TODO: Optionally page over longer results
-var limit int32 = 10
+var pageSize int32 = 20
 
 func (s *Server) GetMyAgent() (stapi.Agent, error) {
 	s.timerTake()
@@ -116,7 +117,8 @@ func (s *Server) GetContract(contract string) (stapi.Contract, error) {
 
 func (s *Server) GetContracts() ([]stapi.Contract, error) {
 	s.timerTake()
-	resp, _, err := s.apiClient.ContractsApi.GetContracts(s.getAuth()).Limit(limit).Execute()
+	// TODO: loop to get all of them
+	resp, _, err := s.apiClient.ContractsApi.GetContracts(s.getAuth()).Limit(pageSize).Execute()
 	return resp.GetData(), err
 }
 
@@ -129,7 +131,10 @@ func (s *Server) GetStatus() (stapi.GetStatus200Response, error) {
 func (s *Server) Register(name string, faction string) (stapi.Register201ResponseData, error) {
 	s.timerTake()
 	request := *stapi.NewRegisterRequest(stapi.FactionSymbols(faction), name)
-	resp, _, err := s.apiClient.DefaultApi.Register(s.getAuth()).RegisterRequest(request).Execute()
+	resp, r, err := s.apiClient.DefaultApi.Register(context.Background()).RegisterRequest(request).Execute()
+	if err != nil {
+		fmt.Println(r)
+	}
 	return resp.GetData(), err
 }
 
@@ -141,7 +146,8 @@ func (s *Server) GetFaction(faction stapi.FactionSymbols) (stapi.Faction, error)
 
 func (s *Server) GetFactions() ([]stapi.Faction, error) {
 	s.timerTake()
-	resp, _, err := s.apiClient.FactionsApi.GetFactions(s.getAuth()).Limit(limit).Execute()
+	// TODO: loop to get all of them
+	resp, _, err := s.apiClient.FactionsApi.GetFactions(s.getAuth()).Limit(pageSize).Execute()
 	return resp.GetData(), err
 }
 
@@ -208,7 +214,8 @@ func (s *Server) GetMyShipCargo(ship string) (stapi.ShipCargo, error) {
 
 func (s *Server) GetMyShips() ([]stapi.Ship, error) {
 	s.timerTake()
-	resp, _, err := s.apiClient.FleetApi.GetMyShips(s.getAuth()).Limit(limit).Execute()
+	// TODO: loop to get all of them
+	resp, _, err := s.apiClient.FleetApi.GetMyShips(s.getAuth()).Limit(pageSize).Execute()
 	return resp.GetData(), err
 }
 
@@ -353,14 +360,31 @@ func (s *Server) GetSystem(system string) (stapi.System, error) {
 
 func (s *Server) GetSystemWaypoints(system string) ([]stapi.Waypoint, error) {
 	s.timerTake()
-	resp, _, err := s.apiClient.SystemsApi.GetSystemWaypoints(s.getAuth(), system).Limit(limit).Execute()
+	// TODO: loop to get all of them
+	resp, _, err := s.apiClient.SystemsApi.GetSystemWaypoints(s.getAuth(), system).Limit(pageSize).Execute()
 	return resp.GetData(), err
 }
 
 func (s *Server) GetSystems() ([]stapi.System, error) {
 	s.timerTake()
-	resp, _, err := s.apiClient.SystemsApi.GetSystems(s.getAuth()).Limit(limit).Execute()
+	resp, _, err := s.apiClient.SystemsApi.GetSystems(s.getAuth()).Limit(pageSize).Execute()
 	return resp.GetData(), err
+}
+
+func (s *Server) GetMoreSystems(start int, count int) ([]stapi.System, error) {
+	pageStart := (int32(start) / pageSize) + 1
+	pageEnd := int32(math.Ceil(float64(start+count) / float64(pageSize)))
+	var result []stapi.System
+	for i := pageStart; i <= pageEnd; i++ {
+		s.timerTake()
+		resp, _, err := s.apiClient.SystemsApi.GetSystems(s.getAuth()).Limit(pageSize).Page(i).Execute()
+		result = append(result, resp.GetData()...)
+		if (err != nil) || (len(resp.GetData()) < int(pageSize)) {
+			return result, err
+		}
+	}
+
+	return result, nil
 }
 
 func (s *Server) GetWaypoint(system string, waypoint string) (stapi.Waypoint, error) {

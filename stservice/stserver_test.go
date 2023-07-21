@@ -42,3 +42,29 @@ func TestCallbackTwice(t *testing.T) {
 		fmt.Printf("Name: %v\n", v.Symbol)
 	}
 }
+
+func TestSystemsPage(t *testing.T) {
+	s := NewServer()
+
+	s.Start()
+	defer s.Stop()
+
+	// Print specific fields
+	systems, err := s.GetMoreSystems(0, 10)
+
+	if err != nil {
+		t.Errorf("Couldn't retrieve page %v", 1)
+	} else {
+		t.Logf("Retrieved %v systems", len(systems))
+	}
+
+	// Starting System
+	systems, err = s.GetMoreSystems(10, 10)
+
+	if err != nil {
+		t.Errorf("Couldn't retrieve page %v", 2)
+	} else {
+		t.Logf("Retrieved %v systems", len(systems))
+	}
+
+}
