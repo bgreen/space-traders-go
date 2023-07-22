@@ -271,9 +271,10 @@ func (s *Server) OrbitShip(ship string) (stapi.OrbitShip200ResponseData, error) 
 	return resp.GetData(), err
 }
 
-func (s *Server) PatchShipNav(ship string) (stapi.ShipNav, error) {
+func (s *Server) PatchShipNav(ship string, mode string) (stapi.ShipNav, error) {
 	s.timerTake()
 	request := *stapi.NewPatchShipNavRequest()
+	request.SetFlightMode(stapi.ShipNavFlightMode(mode))
 	resp, _, err := s.apiClient.FleetApi.PatchShipNav(s.getAuth(), ship).PatchShipNavRequest(request).Execute()
 	return resp.GetData(), err
 }

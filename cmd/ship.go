@@ -56,10 +56,11 @@ func shipInfoShort(ship stapi.Ship) string {
 
 func shipInfoLong(ship stapi.Ship) string {
 	var s string
-	s += fmt.Sprintf("%v:\t%v\t%v\tFuel: %v/%v\n",
+	s += fmt.Sprintf("%v:\t%v\t%v\t%v\tFuel: %v/%v\n",
 		ship.Symbol,
 		ship.Frame.Name,
 		ship.Nav.WaypointSymbol,
+		ship.Engine.Name,
 		ship.Fuel.Current, ship.Fuel.Capacity)
 	var modules string
 	for i, v := range ship.Modules {

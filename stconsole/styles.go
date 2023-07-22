@@ -62,7 +62,7 @@ func (m model) resetStyle() style {
 	s.paneHeight = s.totalHeight - 2
 	s.paneWidth = (s.totalWidth - s.buttonWidth) / s.paneCount
 
-	for i, _ := range s.buttonLoc {
+	for i := range s.buttonLoc {
 		var b box
 		b.topLeft.x = 0
 		b.topLeft.y = 1 + s.buttonHeight*i
@@ -71,7 +71,7 @@ func (m model) resetStyle() style {
 		s.buttonLoc[i] = b
 	}
 
-	for i, _ := range s.paneLoc {
+	for i := range s.paneLoc {
 		var b box
 		b.topLeft.x = 0 + s.buttonWidth + s.paneWidth*i
 		b.topLeft.y = 1
