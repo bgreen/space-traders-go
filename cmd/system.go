@@ -23,7 +23,6 @@ var systemCmd = &cobra.Command{
 		if len(args) == 0 {
 			resp, err := client.GetMoreSystems(0, c)
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 			systems = append(systems, resp...)
@@ -31,7 +30,6 @@ var systemCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			resp, err := client.GetSystem(args[0])
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 			systems = append(systems, resp)
@@ -82,7 +80,6 @@ var systemMarketCmd = &cobra.Command{
 		if isSystemSymbol(args[0]) {
 			resp, err := client.GetSystemWaypoints(args[0])
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 			for _, v := range resp {
@@ -95,7 +92,6 @@ var systemMarketCmd = &cobra.Command{
 		} else if isWaypointSymbol(args[0]) {
 			resp, err := client.GetMarket(waypointSymbolToSystemSymbol(args[0]), args[0])
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 			markets = append(markets, resp)
@@ -121,7 +117,6 @@ var systemShipyardCmd = &cobra.Command{
 		if isSystemSymbol(args[0]) {
 			resp, err := client.GetSystemWaypoints(args[0])
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 			for _, v := range resp {
@@ -134,7 +129,6 @@ var systemShipyardCmd = &cobra.Command{
 		} else if isWaypointSymbol(args[0]) {
 			resp, err := client.GetShipyard(waypointSymbolToSystemSymbol(args[0]), args[0])
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 			markets = append(markets, resp)

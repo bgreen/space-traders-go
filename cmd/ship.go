@@ -23,7 +23,6 @@ var shipCmd = &cobra.Command{
 		if len(args) == 0 {
 			v, err := client.GetMyShips()
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 
@@ -31,7 +30,6 @@ var shipCmd = &cobra.Command{
 		} else if len(args) == 1 {
 			v, err := client.GetMyShip(args[0])
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 
@@ -81,7 +79,6 @@ var shipOrbitCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		v, err := client.OrbitShip(args[0])
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -96,7 +93,6 @@ var shipDockCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		v, err := client.DockShip(args[0])
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -112,7 +108,6 @@ var shipNavCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		v, err := client.NavigateShip(args[0], args[1])
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -128,7 +123,6 @@ var shipJumpCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		v, err := client.JumpShip(args[0], args[1])
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -144,7 +138,6 @@ var shipWarpCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		v, err := client.WarpShip(args[0], args[1])
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -160,7 +153,6 @@ var shipRefuelCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := client.RefuelShip(args[0])
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -176,7 +168,24 @@ var shipMineCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := client.ExtractResources(args[0])
 		if err != nil {
-			fmt.Println(err)
+			return
+		}
+
+		fmt.Printf("%v\n", resp)
+	},
+}
+
+var shipRefineCmd = &cobra.Command{
+	Use:   "refine <ship> <product>",
+	Short: "Refine resources with a ship",
+	Long: `Refine resources with a ship.
+
+Allowable products are:
+IRON COPPER SILVER GOLD ALUMINUM PLATINUM URANITE MERITIUM FUEL`,
+	Args: cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := client.ShipRefine(args[0], args[1])
+		if err != nil {
 			return
 		}
 
@@ -193,7 +202,6 @@ var shipCargoCmd = &cobra.Command{
 
 		v, err := client.GetMyShipCargo(args[0])
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -220,7 +228,6 @@ var shipCargoSellCmd = &cobra.Command{
 		count, _ := strconv.Atoi(args[2])
 		resp, err := client.SellCargo(args[0], stapi.TradeSymbol(args[1]), int32(count))
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -237,7 +244,6 @@ var shipCargoBuyCmd = &cobra.Command{
 		count, _ := strconv.Atoi(args[2])
 		resp, err := client.PurchaseCargo(args[0], stapi.TradeSymbol(args[1]), int32(count))
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -255,6 +261,7 @@ func init() {
 	shipCmd.AddCommand(shipWarpCmd)
 	shipCmd.AddCommand(shipRefuelCmd)
 	shipCmd.AddCommand(shipMineCmd)
+	shipCmd.AddCommand(shipRefineCmd)
 	shipCmd.AddCommand(shipCargoCmd)
 
 	shipCargoCmd.AddCommand(shipCargoSellCmd)

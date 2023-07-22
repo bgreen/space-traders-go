@@ -64,10 +64,18 @@ func mineUntilFull(shipSymbol string) {
 
 	navAndRefuel(ship, closest)
 
+	// Check if there's a cooldown active
+	cd, _ := client.GetShipCooldown(ship.Symbol)
+	if cd.RemainingSeconds > 0 {
+		t := time.Until(*cd.Expiration)
+		fmt.Printf("Waiting %v for cooldown\n", t)
+		time.Sleep(t)
+		fmt.Printf("Cooldown complete\n")
+	}
+
 	for {
 		r0, err := client.ExtractResources(shipSymbol)
 		if err != nil {
-			fmt.Println(err)
 			return
 		}
 
@@ -82,6 +90,7 @@ func mineUntilFull(shipSymbol string) {
 		t := time.Until(*r0.Cooldown.Expiration)
 		fmt.Printf("Waiting %v for cooldown\n", t)
 		time.Sleep(t)
+		fmt.Printf("Cooldown complete\n")
 	}
 	fmt.Println("Done mining")
 }
@@ -125,32 +134,37 @@ func navAndRefuel(ship stapi.Ship, dest stapi.Waypoint) {
 	// If ship is docked, undock
 	if ship.Nav.Status == "DOCKED" {
 		r0, _ := client.OrbitShip(ship.Symbol)
-		fmt.Println(r0)
+		fmt.Printf("Ship %v\n", r0.Nav.Status)
 	}
 
 	// If ship isn't already there, go there
 	if ship.Nav.WaypointSymbol != dest.Symbol {
 
 		// Set thrusters to slow
-		if isLowFuel(ship) && (ship.Nav.FlightMode != "DRIFT") {
+		if isLowFuel(ship.Fuel) && (ship.Nav.FlightMode != "DRIFT") {
 			r1, _ := client.PatchShipNav(ship.Symbol, "DRIFT")
-			fmt.Println(r1)
+			fmt.Printf("Set flight mode to %v due to low fuel (%v/%v)\n", r1.FlightMode, ship.Fuel.Current, ship.Fuel.Capacity)
 		} else if ship.Nav.FlightMode != "CRUISE" {
 			r1, _ := client.PatchShipNav(ship.Symbol, "CRUISE")
-			fmt.Println(r1)
+			fmt.Printf("Set flight mode to %v\n", r1.FlightMode)
 		}
 
 		// Go to the destination
-		r2, _ := client.NavigateShip(ship.Symbol, dest.Symbol)
-		fmt.Println(r2)
+		r2, err := client.NavigateShip(ship.Symbol, dest.Symbol)
+		if err != nil {
+			return
+		}
+		fmt.Printf("Navigating to %v\n", r2.Nav.WaypointSymbol)
 
 		// Wait to get there
 		t := time.Until(r2.Nav.Route.Arrival)
 		fmt.Printf("Waiting %v to arrive\n", t)
 		time.Sleep(t)
+		fmt.Println("Arrived")
 
 		// Refuel
-		if isWaypointMarket(dest) && isLowFuel(ship) {
+		if isWaypointMarket(dest) && isLowFuel(r2.Fuel) {
+			fmt.Printf("Refueling due to low fuel (%v/%v)\n", r2.Fuel.Current, r2.Fuel.Capacity)
 			client.DockShip(ship.Symbol)
 			client.RefuelShip(ship.Symbol)
 			client.OrbitShip(ship.Symbol)
@@ -158,20 +172,18 @@ func navAndRefuel(ship stapi.Ship, dest stapi.Waypoint) {
 	}
 }
 
-func isLowFuel(ship stapi.Ship) bool {
-	return (ship.Fuel.Current == 0) || (float64(ship.Fuel.Current)/float64(ship.Fuel.Capacity) <= 0.5)
+func isLowFuel(fuel stapi.ShipFuel) bool {
+	return (fuel.Current == 0) || (float64(fuel.Current)/float64(fuel.Capacity) <= 0.5)
 }
 
 func sellAllCargo(shipSymbol string) {
 	ship, err := client.GetMyShip(shipSymbol)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 
 	waypoints, err := client.GetSystemWaypoints(ship.Nav.SystemSymbol)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 
