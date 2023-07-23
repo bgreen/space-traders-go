@@ -41,6 +41,8 @@ func init() {
 	// will be global for your application.
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.space-traders-go.yaml)")
+	rootCmd.PersistentFlags().BoolP("long", "l", false, "Longer output")
+	rootCmd.PersistentFlags().BoolP("raw", "r", false, "Print raw messages")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

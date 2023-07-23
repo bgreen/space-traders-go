@@ -100,6 +100,8 @@ func mineUntilFull(shipSymbol string) error {
 		time.Sleep(t)
 	}
 
+	total := int32(0)
+	cycles := int32(0)
 	for {
 		r0, err := client.ExtractResources(shipSymbol)
 		if err != nil {
@@ -112,12 +114,17 @@ func mineUntilFull(shipSymbol string) error {
 			r0.Extraction.Yield.Units, r0.Extraction.Yield.Symbol,
 			r0.Cargo.Units, r0.Cargo.Capacity, t)
 
+		total += r0.Extraction.Yield.Units
+		cycles += 1
+
 		if r0.Cargo.Units == r0.Cargo.Capacity {
 			break
 		}
 
 		time.Sleep(t)
 	}
+
+	fmt.Printf("%v: Mining trip total %2v units in %2v cycles\n", shipSymbol, total, cycles)
 
 	return nil
 }
@@ -177,8 +184,7 @@ func navAndRefuel(ship stapi.Ship, dest stapi.Waypoint) error {
 
 	// If ship is docked, undock
 	if ship.Nav.Status == "DOCKED" {
-		r0, _ := client.OrbitShip(ship.Symbol)
-		fmt.Printf("%v: Ship %v\n", ship.Symbol, r0.Nav.Status)
+		client.OrbitShip(ship.Symbol)
 	} else if ship.Nav.Status == "IN_TRANSIT" {
 		// Wait for arrival
 		t := time.Until(ship.Nav.Route.Arrival)
@@ -271,6 +277,8 @@ func sellAllCargo(shipSymbol string) error {
 
 	market, _ := client.GetMarket(closest.SystemSymbol, closest.Symbol)
 
+	total := int32(0)
+	leftover := int32(0)
 	for _, v := range ship.Cargo.Inventory {
 		if isMarketBuying(market, v.Symbol) {
 			r0, err := client.SellCargo(ship.Symbol, stapi.TradeSymbol(v.Symbol), v.Units)
@@ -278,12 +286,15 @@ func sellAllCargo(shipSymbol string) error {
 				fmt.Printf("%v: Couldn't sell %v units of %v\n", ship.Symbol, v.Units, v.Symbol)
 			} else {
 				t := r0.Transaction
+				total += t.TotalPrice
 				fmt.Printf("%v: Sold %2v units of %16v at %2v for a total of %3v\n", ship.Symbol, t.Units, t.TradeSymbol, t.PricePerUnit, t.TotalPrice)
 			}
+			leftover = r0.Cargo.Units
 		} else {
 			fmt.Printf("%v: Market does not buy %v\n", ship.Symbol, v.Symbol)
 		}
 	}
+	fmt.Printf("%v: Market trip total %4v; %v units left over\n", shipSymbol, total, leftover)
 
 	return nil
 }

@@ -214,6 +214,14 @@ func (s *Server) ExtractResources(ship string) (stapi.ExtractResources201Respons
 	return resp.GetData(), handleErr(r, err)
 }
 
+func (s *Server) ExtractSurveyResources(ship string, survey stapi.Survey) (stapi.ExtractResources201ResponseData, error) {
+	s.timerTake()
+	request := *stapi.NewExtractResourcesRequest()
+	request.SetSurvey(survey)
+	resp, r, err := s.apiClient.FleetApi.ExtractResources(s.getAuth(), ship).ExtractResourcesRequest(request).Execute()
+	return resp.GetData(), handleErr(r, err)
+}
+
 func (s *Server) GetMounts(ship string) ([]stapi.ShipMount, error) {
 	s.timerTake()
 	resp, r, err := s.apiClient.FleetApi.GetMounts(s.getAuth(), ship).Execute()

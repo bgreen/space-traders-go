@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/bgreen/space-traders-go/stapi"
 	lg "github.com/charmbracelet/lipgloss"
@@ -54,20 +55,31 @@ func shipInfoShort(ship stapi.Ship) string {
 
 func shipInfoLong(ship stapi.Ship) string {
 	var s string
-	s += fmt.Sprintf("%v:\t%v\t%v\t%v\tFuel: %v/%v\n",
-		ship.Symbol,
-		ship.Frame.Name,
-		ship.Nav.WaypointSymbol,
-		ship.Engine.Name,
-		ship.Fuel.Current, ship.Fuel.Capacity)
+	s += fmt.Sprintf("%v: %v (%v)\n", ship.Symbol, ship.Frame.Name[6:], ship.Registration.Role)
+
+	s += fmt.Sprintf("Location: %v\n", ship.Nav.WaypointSymbol)
+	s += fmt.Sprintf("Engine:   %v (%v/%v)\n", ship.Engine.Name, ship.Fuel.Current, ship.Fuel.Capacity)
+	s += fmt.Sprintf("Reactor:  %v\n", ship.Reactor.Name)
+
+	s += fmt.Sprintf("Status:   %v %v\n", ship.Nav.Status, ship.Nav.FlightMode)
+	if ship.Nav.Status == "IN_TRANSIT" {
+		s += fmt.Sprintf("Departure: %14v %v\n", ship.Nav.Route.Departure.Symbol, ship.Nav.Route.DepartureTime.Local())
+		s += fmt.Sprintf("Arrival:   %14v %v (%v)\n",
+			ship.Nav.Route.Destination.Symbol,
+			ship.Nav.Route.Arrival.Local(),
+			time.Until(ship.Nav.Route.Arrival))
+	}
+
 	var modules string
 	for i, v := range ship.Modules {
 		modules += fmt.Sprintf("Module %02v: %v\n", i, v.Name)
 	}
+
 	var mounts string
 	for i, v := range ship.Mounts {
 		mounts += fmt.Sprintf("Mount %02v: %v\n", i, v.Name)
 	}
+
 	s += lg.JoinHorizontal(lg.Left, modules, mounts)
 	return s
 }
@@ -106,6 +118,16 @@ var shipNavCmd = &cobra.Command{
 	Long:  `Pilot a ship to a destination`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
+		p, _ := cmd.Flags().GetString("patch")
+		if p != "" {
+			r, err := client.PatchShipNav(args[0], p)
+			if err != nil {
+				return
+			}
+
+			fmt.Println(r)
+		}
+
 		v, err := client.NavigateShip(args[0], args[1])
 		if err != nil {
 			return
@@ -251,6 +273,80 @@ var shipCargoBuyCmd = &cobra.Command{
 	},
 }
 
+var shipSurveyCmd = &cobra.Command{
+	Use:   "survey <ship>",
+	Short: "Perform surveys with a surveyor",
+	Long:  `Perform surveys with a surveyor.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+
+		v, err := client.CreateSurvey(args[0])
+		if err != nil {
+			return
+		}
+
+		fmt.Println(v)
+
+	},
+}
+
+var shipScanCmd = &cobra.Command{
+	Use:   "scan <ship>",
+	Short: "Perform scans with a sensor array",
+	Long:  `Perform scans with a sensor array.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		var s any
+		var err error
+		if f, _ := cmd.Flags().GetBool("ship"); f {
+			s, err = client.CreateShipShipScan(args[0])
+		} else if f, _ := cmd.Flags().GetBool("waypoint"); f {
+			s, err = client.CreateShipWaypointScan(args[0])
+		} else if f, _ := cmd.Flags().GetBool("system"); f {
+			s, err = client.CreateShipSystemScan(args[0])
+		}
+
+		if err != nil {
+			return
+		}
+
+		switch sp := s.(type) {
+		case stapi.CreateShipShipScan201ResponseData:
+			fmt.Println(shipShipScanInfoLong(sp))
+		case stapi.CreateShipWaypointScan201ResponseData:
+			fmt.Println(shipWaypointScanInfoLong(sp))
+		case stapi.CreateShipSystemScan201ResponseData:
+			fmt.Println(shipSystemScanInfoLong(sp))
+		default:
+			return
+		}
+	},
+}
+
+func shipShipScanInfoLong(scan stapi.CreateShipShipScan201ResponseData) string {
+	var s string
+	for _, v := range scan.Ships {
+		s += fmt.Sprintf("%-24v: %v\n", v.Frame.Symbol, v.Registration.Name)
+	}
+	return s
+}
+
+func shipWaypointScanInfoLong(scan stapi.CreateShipWaypointScan201ResponseData) string {
+	var s string
+	for _, v := range scan.Waypoints {
+		s += fmt.Sprintf("%-14v: %v\n", v.Symbol, v.Type)
+	}
+	return s
+}
+
+func shipSystemScanInfoLong(scan stapi.CreateShipSystemScan201ResponseData) string {
+	var s string
+	for _, v := range scan.Systems {
+		s += fmt.Sprintf("%-7v: %-12v Dist:%5v\n", v.Symbol, v.Type, v.Distance)
+	}
+	return s
+}
+
 func init() {
 	rootCmd.AddCommand(shipCmd)
 
@@ -263,6 +359,8 @@ func init() {
 	shipCmd.AddCommand(shipMineCmd)
 	shipCmd.AddCommand(shipRefineCmd)
 	shipCmd.AddCommand(shipCargoCmd)
+	shipCmd.AddCommand(shipSurveyCmd)
+	shipCmd.AddCommand(shipScanCmd)
 
 	shipCargoCmd.AddCommand(shipCargoSellCmd)
 	shipCargoCmd.AddCommand(shipCargoBuyCmd)
@@ -276,5 +374,11 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// shipCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	shipCmd.Flags().BoolP("long", "l", false, "print more info")
+
+	shipNavCmd.Flags().StringP("patch", "p", "", "Set flight mode")
+
+	shipScanCmd.Flags().Bool("system", false, "perform a system scan")
+	shipScanCmd.Flags().Bool("waypoint", false, "perform a waypoint scan")
+	shipScanCmd.Flags().Bool("ship", false, "perform a ship scan")
+	shipScanCmd.MarkFlagsMutuallyExclusive("system", "waypoint", "ship")
 }

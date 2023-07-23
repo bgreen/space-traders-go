@@ -317,6 +317,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// systemCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	systemCmd.Flags().BoolP("long", "l", false, "print more info")
 	systemCmd.Flags().IntP("count", "c", 10, "Maximum number of systems to list")
 }
