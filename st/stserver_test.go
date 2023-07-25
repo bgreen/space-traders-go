@@ -1,4 +1,4 @@
-package stservice
+package st
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestCallbackOnce(t *testing.T) {
-	s := NewServer()
+	s := NewClient()
 
 	s.Start()
 	defer s.Stop()
@@ -21,7 +21,7 @@ func TestCallbackOnce(t *testing.T) {
 }
 
 func TestCallbackTwice(t *testing.T) {
-	s := NewServer()
+	s := NewClient()
 
 	s.Start()
 	defer s.Stop()
@@ -44,7 +44,7 @@ func TestCallbackTwice(t *testing.T) {
 }
 
 func TestSystemsPage(t *testing.T) {
-	s := NewServer()
+	s := NewClient()
 
 	s.Start()
 	defer s.Stop()

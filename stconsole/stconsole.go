@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	st "github.com/bgreen/space-traders-go/st"
 	stapi "github.com/bgreen/space-traders-go/stapi"
-	st "github.com/bgreen/space-traders-go/stservice"
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
 
-var client *st.Server
+var client *st.Client
 
 func Run() {
 
@@ -18,7 +18,7 @@ func Run() {
 		waypoints: make(map[string]stapi.Waypoint)}
 
 	// Create API Client
-	client = st.NewServer()
+	client = st.NewClient()
 	client.Start()
 	defer client.Stop()
 	// Create the bubbletea app

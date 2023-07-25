@@ -1,4 +1,4 @@
-package stservice
+package st
 
 import "github.com/bgreen/space-traders-go/stapi"
 

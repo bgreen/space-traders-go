@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	st "github.com/bgreen/space-traders-go/stservice"
+	st "github.com/bgreen/space-traders-go/st"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
 

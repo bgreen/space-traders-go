@@ -6,7 +6,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/bgreen/space-traders-go/stservice"
+	"github.com/bgreen/space-traders-go/st"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	client = stservice.NewServer()
+	client = st.NewClient()
 	client.Start()
 	defer client.Stop()
 	err := rootCmd.Execute()
@@ -32,7 +32,7 @@ func Execute() {
 	}
 }
 
-var client *stservice.Server
+var client *st.Client
 
 func init() {
 

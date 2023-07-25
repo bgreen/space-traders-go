@@ -1,4 +1,4 @@
-package stservice
+package st
 
 import (
 	"fmt"

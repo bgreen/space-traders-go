@@ -5,7 +5,10 @@ package cmd
 
 import (
 	"fmt"
+	"math/rand"
+	"os"
 
+	"github.com/bgreen/space-traders-go/stapi"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +25,11 @@ st register <agent name> [faction symbol]`,
 		faction := "COSMIC"
 		if len(args) >= 2 {
 			faction = args[1]
+		} else {
+			// Pick a random faction
+			fmt.Println("Picking random faction")
+			index := rand.Intn(len(stapi.AllowedFactionSymbolsEnumValues))
+			faction = string(stapi.AllowedFactionSymbolsEnumValues[index])
 		}
 
 		fmt.Printf("Register name \"%v\" faction \"%v\"\n", name, faction)
@@ -31,7 +39,12 @@ st register <agent name> [faction symbol]`,
 			return
 		}
 
-		fmt.Println(r)
+		err = os.WriteFile("token.txt", []byte(r.Token), 0666)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Printf("Token written to token.txt\n")
 	},
 }
 
